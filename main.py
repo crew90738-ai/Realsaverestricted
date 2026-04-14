@@ -67,6 +67,16 @@ try:
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
+import asyncio
+
+# Fix Pyrogram loop conflict on Python 3.11+ (Render)
+asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+
+# Ensure a loop exists before importing/starting Pyrogram
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  LOGGING
@@ -1406,21 +1416,16 @@ async def main() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    # Start health-check server in a daemon thread (no asyncio, no loop conflict)
-    start_health_server()
-
-    # Pyrogram 2.0.106 internally calls asyncio.get_event_loop() in its dispatcher.
-    # asyncio.run() in Python 3.11 uses Runner which does NOT register the loop
-    # as the thread's current loop — causing Pyrogram's dispatcher tasks to land
-    # on a "different loop". Fix: manually create + register the loop first.
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    loop = None
     try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
     except KeyboardInterrupt:
-        pass
+        print("Bot stopped manually.")
+    except Exception as e:
+        print(f"Critical error: {e}")
     finally:
-        try:
+        if loop and not loop.is_closed():
             loop.close()
-        except Exception:
-            pass
+        print("Event loop closed. Goodbye 👋")
