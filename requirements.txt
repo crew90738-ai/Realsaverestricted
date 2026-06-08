@@ -1,4 +1,4 @@
-pyrofork==2.3.1
+pyrofork==2.3.69
 TgCrypto==1.2.5
 redis==5.0.8
 aiohttp==3.9.5
